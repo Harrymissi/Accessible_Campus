@@ -1,0 +1,38 @@
+map.locate({setView: true, watch: true, maxZoom: 17})   // 定位
+              .on('locationfounder',function (e) {
+                  var marker = L.marker([e.latitude, e.longitude]).bindPopup('Your are here :)');
+                  var circle = L.circle([e.latitude, e.longitude], e.accuracy / 2, {
+                      weight: 1,
+                      color: 'blue',
+                      fillColor: '#cacaca',
+                      fillOpacity: 0.2
+                  });
+                  map.addLayer(marker);
+                  map.addLayer(circle);
+              })
+              .on('locationerror',function (e) {
+                  console.log(e);
+                  alert("Location access denied");
+              });
+          map.on('click', function (e) {  //
+              alert("Lat, Lon : " + e.latlng.lat + ", " + e.latlng.lng)
+          });
+
+
+
+function onLocationFound(e) {
+              var radius = e.accuracy / 2;
+
+              L.marker(e.latlng).addTo(map)
+                  .bindPopup("You are within " + radius + " meters from this point").openPopup();
+
+              L.circle(e.latlng, radius).addTo(map);
+          }
+
+          map.on('locationfound', onLocationFound);
+
+          function onLocationError(e) {
+              alert(e.message);
+          }
+
+          map.on('locationerror', onLocationError);

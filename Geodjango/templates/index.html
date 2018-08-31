@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load leaflet_tags %}
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    {% leaflet_js %}
+    {% leaflet_css %}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <style type="text/css">
+        #gis {width: 80%; height: 700px}
+    </style>
+    <link rel="stylesheet" type="text/css" href="{% static 'leaflet-groupedlayercontrol/leaflet.groupedlayercontrol.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'routing/leaflet-routing-machine.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/easy-button.css' %}">
+
+    <script type="text/javascript" src="{% static 'dist/leaflet.ajax.js' %}"></script>
+    <script type="text/javascript" src="{% static 'leaflet-groupedlayercontrol/leaflet.groupedlayercontrol.js' %}"></script>
+    <script type="text/javascript" src="{% static 'routing/leaflet-routing-machine.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/easy-button.js' %}" ></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+
+
+    <title>Our Home Page</title>
+</head>
+<body>
+  <h1>Welcome to Accessible Campus!</h1>
+  <script type="text/javascript">
+      $("#printBtn").click(function () {
+          $('#map').print();
+      });
+  </script>
+  <br>
+
+  <script type="text/javascript">
+      function our_layers(map, options) {
+          map.setView([42.30, -83.01],14);
+          var osm = L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              maxZoom: 19,
+              minZoom: 18,
+              attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          });
+          var OpenTopoMap = L.tileLayer('http://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+              maxZoom: 17,
+              attribution: 'Map data: &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+          });
+
+
+          var datasets = new L.GeoJSON.AJAX("{% url 'firstgis:county' %}", {
+              style: function colors(feature) {
+                  switch (feature.properties.counties) {
+                      case 'WAJIR':
+                          return {
+                              color: 'orange',
+                              fillOpacity: 0.8
+                          };
+                          break;
+                      case 'ISIOLO':
+                          return {
+                              color: 'purple',
+                              fillOpacity: 0.8
+                          };
+                          break;
+
+                  }
+              },
+              onEachFeature: function (feature, layer) {
+                  layer.bindPopup(feature.properties.counties.toString());
+              }
+
+          });
+
+          var points = new L.GeoJSON.AJAX("{% url 'firstgis:incidence' %}", {
+              pointToLayer: function (feature, latlng) {
+                  return L.marker(latlng, {
+                      icon: L.icon({
+                          iconUrl: "{% static 'img/red.png' %}",
+                          iconSize: [24, 28],
+                          iconAnchor: [12, 28],
+                          popupAnchor: [0, -25]
+                      }),
+                      title: feature.properties.NAME,
+                      riseOnHover: true
+                  });
+              },
+              onEachFeature: function (feature, layer) {
+                  layer.bindPopup(feature.properties.name.toString());
+              }
+
+          });
+
+          //datasets.addTo(map);
+          points.addTo(map);
+
+
+          var baseLayers = {
+              "OSM": osm,
+              "OpenTopoMap": OpenTopoMap
+          }
+
+          var groupedOverlays = {
+              "Layers": {
+                  "counties": datasets,
+                  "Buildings": points
+              }
+
+          };
+
+          L.control.groupedLayers(baseLayers, groupedOverlays).addTo(map);
+
+
+
+          var routing = L.Routing.control({
+              waypoints: [
+                  L.latLng(42.305477, -83.065303),
+                  L.latLng(42.30, -83.01)
+              ]
+          });
+
+          L.easyButton('fa-compass',
+              function () {
+                  $('.leaflet-routing-container').is(':visible') ? routing.removeFrom(map) : routing.addTo(map)
+              },
+              'Routing'
+          ).addTo(map);
+
+
+          function createButton(label, container) {
+              var btn = L.DomUtil.create('button', '', container);
+              btn.setAttribute('type', 'button');
+              btn.innerHTML = label;
+              return btn;
+          }
+
+          map.locate({setView: true, maxZoom: 16, watch: true});
+          function onLocationFound(e) {
+              var radius = e.accuracy / 2;
+
+              L.marker(e.latlng).addTo(map)
+                  .bindPopup("You are within " + radius + " meters from this point").openPopup();
+
+              L.circle(e.latlng, radius).addTo(map);
+          }
+
+          map.on('locationfound', onLocationFound);
+
+          function onLocationError(e) {
+              alert(e.message);
+          }
+
+          map.on('locationerror', onLocationError);
+      }
+
+  </script>
+
+  {% leaflet_map "gis" callback="window.our_layers" %}
+</body>
+</html>
